@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from op_wrapper.adaptive_dilated_conv2d_wrapper import BasicAdaptiveDilatedConv2D
+
 class BasicConv2d(nn.Module):
     def __init__(self, 
                  in_channels, 
@@ -11,7 +13,7 @@ class BasicConv2d(nn.Module):
                  if_Bias=True,
                  activation=nn.ReLU(inplace=True)):
         super(BasicConv2d, self).__init__()
-        self.conv2d = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding=pad, bias=if_Bias)
+        self.conv2d = BasicAdaptiveDilatedConv2D(in_channels, out_channels, kernel_size, stride=stride, scale=10, dilation=2)
         self.if_Bn = if_Bn
         if self.if_Bn:
             self.Bn = nn.BatchNorm2d(out_channels)

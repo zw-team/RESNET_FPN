@@ -26,7 +26,7 @@ class EvalDatasetConstructor(data.Dataset):
         self.calcu = HSI_Calculator()
         self.mode = mode
         self.stage = stage
-        self.GroundTruthProcess = GroundTruthProcess(1, 1, 2).cuda()
+        self.GroundTruthProcess = GroundTruthProcess(1, 1, 4).cuda()
         count= 0
         for i in range(self.validate_num):
             img_name = '/IMG_' + str(i + 1) + ".jpg"
@@ -82,15 +82,16 @@ class EvalDatasetConstructor(data.Dataset):
             return img_index, imgs, gt_map.view(1, gt_shape[1] // 2, gt_shape[2] // 2)
         
         else:
-            img, gt_map = self.imgs[index]
+            img, gt_map, img_index = self.imgs[index]
+            height = img.size[1]
+            width = img.size[0]
+            img = transforms.Resize([height * 2, width * 2])(img)
             img = transforms.ToTensor()(img).cuda()
             gt_map = transforms.ToTensor()(gt_map).cuda()
             img_shape = img.shape  # C, H, W
             img = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))(img)
-            gt_map = self.GroundTruthProcess(gt_map.view(1, 1, img_shape[1], img_shape[2]))
-            if self.stage == 'shape':
-                gt_map = (gt_map > 0.001).float()
-            return index + 1, img, gt_map.view(1, img_shape[1] // 2, img_shape[2] // 2)
+            gt_map = self.GroundTruthProcess(gt_map.view(1, 1, img_shape[1] // 2, img_shape[2] // 2))
+            return img_index, img, gt_map.view(1, img_shape[1] // 8, img_shape[2] // 8)
 
     def __len__(self):
         return self.validate_num

@@ -32,7 +32,7 @@ class TrainDatasetConstructor(data.Dataset):
         self.stage = stage
         self.if_random_hsi = if_random_hsi
         self.if_flip = if_flip
-        self.GroundTruthProcess = GroundTruthProcess(1, 1, 2).cuda()
+        self.GroundTruthProcess = GroundTruthProcess(1, 1, 4).cuda()
         count = 0
         for i in range(self.train_num):
             img_name = '/IMG_' + str(i + 1) + ".jpg"
@@ -91,7 +91,10 @@ class TrainDatasetConstructor(data.Dataset):
             return map_index, img.view(3, 400, 400), gt_map.view(1, 200, 200)
           
         else:
-            img, gt_map = self.imgs[self.permulation[index]]
+            img, gt_map, map_index = self.imgs[self.permulation[index]]
+            height = img.size[1]
+            width = img.size[0]
+            img = transforms.Resize([height * 2, width * 2])(img)
             if self.if_random_hsi:
                 img = transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2)(img)
             if self.if_flip:
@@ -103,10 +106,8 @@ class TrainDatasetConstructor(data.Dataset):
             gt_map = transforms.ToTensor()(gt_map).cuda()
             img_shape = img.shape  # C, H, W
             img = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))(img)
-            gt_map = self.GroundTruthProcess(gt_map.view(1, 1, img_shape[1], img_shape[2]))
-            if self.stage == 'shape':
-                gt_map = (gt_map > 0.001).float()
-            return self.permulation[index] + 1, img, gt_map.view(1, img_shape[1] // 2, img_shape[2] // 2)
+            gt_map = self.GroundTruthProcess(gt_map.view(1, 1, img_shape[1] // 2, img_shape[2] // 2))
+            return map_index, img, gt_map.view(1, img_shape[1] // 8, img_shape[2] // 8)
 
     def __len__(self):
         return self.train_num

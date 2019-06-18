@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as functional
 from net.BasicConv2d import BasicConv2d
 
-
 class Decoder(nn.Module):
     def __init__(self, IF_BN=True, **kwargs):
         super(Decoder, self).__init__()
