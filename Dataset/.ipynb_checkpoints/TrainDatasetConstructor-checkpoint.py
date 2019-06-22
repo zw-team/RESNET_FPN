@@ -3,14 +3,13 @@ import numpy as np
 import torch
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as F
+import torch.nn.functional as functional
 import torch.utils.data as data
 import random
 import time
-from utils import GroundTruthProcess, HSI_Calculator
 import scipy.io as scio
 import h5py
 import math
-pers_dir_path = "/home/zzn/Documents/Datasets/part_A_final/train_data/perspective_gt"
 
 class TrainDatasetConstructor(data.Dataset):
     def __init__(self,
@@ -19,6 +18,7 @@ class TrainDatasetConstructor(data.Dataset):
                  train_num,
                  mode='whole',
                  stage='shape',
+                 device=None,
                  if_random_hsi=False,
                  if_flip=False
                  ):
@@ -27,20 +27,15 @@ class TrainDatasetConstructor(data.Dataset):
         self.data_root = data_dir_path
         self.gt_root = gt_dir_path
         self.permulation = np.random.permutation(self.train_num)
-        self.calcu = HSI_Calculator()
         self.mode = mode
         self.stage = stage
         self.if_random_hsi = if_random_hsi
         self.if_flip = if_flip
-        self.GroundTruthProcess = GroundTruthProcess(1, 1, 2).cuda()
-        count = 0
+        self.device = device
+        self.kernel = torch.FloatTensor(torch.ones(1, 1, 2, 2)).to(self.device)
         for i in range(self.train_num):
             img_name = '/IMG_' + str(i + 1) + ".jpg"
             gt_map_name = '/GT_IMG_' + str(i + 1) + ".npy"
-            
-            perspective_map_name = '/IMG_' + str(i + 1) + ".mat"
-            p = h5py.File(pers_dir_path + perspective_map_name)['pmap'][:][0][0]
-            
             img = Image.open(self.data_root + img_name).convert("RGB")
             height = img.size[1]
             width = img.size[0]
@@ -61,10 +56,7 @@ class TrainDatasetConstructor(data.Dataset):
             resize_width = math.ceil(resize_width / 32) * 32
             img = transforms.Resize([resize_height, resize_width])(img)
             gt_map = Image.fromarray(np.squeeze(np.load(self.gt_root + gt_map_name)))
-            if True:
-                self.imgs.append([img, gt_map, i+1])
-                count += 1
-        self.train_num = count
+            self.imgs.append([img, gt_map, i+1])
 
     def __getitem__(self, index):
         if self.mode == 'crop':
@@ -84,10 +76,10 @@ class TrainDatasetConstructor(data.Dataset):
             random_w = random.randint(0, img_shape[2] - 400)
             patch_height = 400
             patch_width = 400
-            img = img[:, random_h:random_h + patch_height, random_w:random_w + patch_width].cuda()
-            gt_map = gt_map[:, random_h:random_h + patch_height, random_w:random_w + patch_width].cuda()
+            img = img[:, random_h:random_h + patch_height, random_w:random_w + patch_width].to(self.device)
+            gt_map = gt_map[:, random_h:random_h + patch_height, random_w:random_w + patch_width].to(self.device)
             img = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))(img)
-            gt_map = self.GroundTruthProcess(gt_map.view(1, 1, 400, 400))
+            gt_map = functional.conv2d(gt_map.view(1, 1, 400, 400), self.kernel, bias=None, stride=2, padding=0)
             return map_index, img.view(3, 400, 400), gt_map.view(1, 200, 200)
           
         else:
@@ -102,11 +94,11 @@ class TrainDatasetConstructor(data.Dataset):
                 if flip_random > 0.5:
                     img = F.hflip(img)
                     gt_map = F.hflip(gt_map)
-            img = transforms.ToTensor()(img).cuda()
-            gt_map = transforms.ToTensor()(gt_map).cuda()
+            img = transforms.ToTensor()(img).to(self.device)
+            gt_map = transforms.ToTensor()(gt_map).to(self.device)
             img_shape = img.shape  # C, H, W
             img = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))(img)
-            gt_map = self.GroundTruthProcess(gt_map.view(1, 1, img_shape[1], img_shape[2]))
+            gt_map = functional.conv2d(gt_map.view(1, *(gt_shape)), self.kernel, bias=None, stride=2, padding=0)
             return map_index, img, gt_map.view(1, img_shape[1] // 2, img_shape[2] // 2)
 
     def __len__(self):

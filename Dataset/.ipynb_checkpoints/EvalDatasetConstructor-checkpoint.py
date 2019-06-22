@@ -6,10 +6,8 @@ import torch.nn.functional as functional
 import torch.utils.data as data
 import scipy.io as scio
 import time
-from utils import GroundTruthProcess, HSI_Calculator
 import torch
 import math
-pers_dir_path = "/home/zzn/Documents/Datasets/part_A_final/test_data/perspective_gt"
 
 class EvalDatasetConstructor(data.Dataset):
     def __init__(self,
@@ -17,23 +15,20 @@ class EvalDatasetConstructor(data.Dataset):
                  gt_dir_path,
                  validate_num,
                  mode='whole',
-                 stage='shape'
+                 stage='shape',
+                 device=None,
                  ):
         self.validate_num = validate_num
         self.imgs = []
         self.data_root = data_dir_path
         self.gt_root = gt_dir_path
-        self.calcu = HSI_Calculator()
         self.mode = mode
         self.stage = stage
-        self.GroundTruthProcess = GroundTruthProcess(1, 1, 2).cuda()
-        count= 0
+        self.device = device
+        self.kernel = torch.FloatTensor(torch.ones(1, 1, 2, 2)).to(self.device)
         for i in range(self.validate_num):
             img_name = '/IMG_' + str(i + 1) + ".jpg"
             gt_map_name = '/GT_IMG_' + str(i + 1) + ".npy"
-            
-            perspective_map_name = '/IMG_' + str(i + 1) + ".mat"
-            p = scio.loadmat(pers_dir_path + perspective_map_name)['pmap'][:][0][0]
             
             img = Image.open(self.data_root + img_name).convert("RGB")
             height = img.size[1]
@@ -55,17 +50,13 @@ class EvalDatasetConstructor(data.Dataset):
             resize_width = math.ceil(resize_width / 32) * 32
             img = transforms.Resize([resize_height, resize_width])(img)
             gt_map = Image.fromarray(np.squeeze(np.load(self.gt_root + gt_map_name)))
-#             if p < 5:
-            if True:
-                self.imgs.append([img, gt_map, i + 1])
-                count += 1
-        self.validate_num = count
+            self.imgs.append([img, gt_map, i + 1])
 
     def __getitem__(self, index):
         if self.mode == 'crop':
             img, gt_map, img_index = self.imgs[index]
-            img = transforms.ToTensor()(img).cuda()
-            gt_map = transforms.ToTensor()(gt_map).cuda()
+            img = transforms.ToTensor()(img).to(self.device)
+            gt_map = transforms.ToTensor()(gt_map).to(self.device)
             img_shape = img.shape  # C, H, W
             gt_shape = gt_map.shape
             img = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))(img)
@@ -78,7 +69,7 @@ class EvalDatasetConstructor(data.Dataset):
                     start_w = (patch_width // 2) * j
                     imgs.append(img[:, start_h:start_h + patch_height, start_w:start_w + patch_width])
             imgs = torch.stack(imgs)
-            gt_map = self.GroundTruthProcess(gt_map.view(1, *(gt_shape)))
+            gt_map = functional.conv2d(gt_map.view(1, *(gt_shape)), self.kernel, bias=None, stride=2, padding=0)
             return img_index, imgs, gt_map.view(1, gt_shape[1] // 2, gt_shape[2] // 2)
         
         else:
@@ -86,11 +77,12 @@ class EvalDatasetConstructor(data.Dataset):
             height = img.size[1]
             width = img.size[0]
             img = transforms.Resize([height, width])(img)
-            img = transforms.ToTensor()(img).cuda()
-            gt_map = transforms.ToTensor()(gt_map).cuda()
+            img = transforms.ToTensor()(img).to(self.device)
+            gt_map = transforms.ToTensor()(gt_map).to(self.device)
+            gt_shape = gt_map.shape
             img_shape = img.shape  # C, H, W
             img = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))(img)
-            gt_map = self.GroundTruthProcess(gt_map.view(1, 1, img_shape[1], img_shape[2]))
+            gt_map = functional.conv2d(gt_map.view(1, *(gt_shape)), self.kernel, bias=None, stride=2, padding=0)
             return img_index, img, gt_map.view(1, img_shape[1] // 2, img_shape[2] // 2)
 
     def __len__(self):
