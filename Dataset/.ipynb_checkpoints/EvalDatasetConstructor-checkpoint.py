@@ -14,7 +14,7 @@ class EvalDatasetConstructor(data.Dataset):
                  data_dir_path,
                  gt_dir_path,
                  validate_num,
-                 mode='whole',
+                 mode='crop',
                  stage='shape',
                  device=None,
                  ):
@@ -27,24 +27,27 @@ class EvalDatasetConstructor(data.Dataset):
         self.device = device
         self.kernel = torch.FloatTensor(torch.ones(1, 1, 2, 2)).to(self.device)
         for i in range(self.validate_num):
-            img_name = '/IMG_' + str(i + 1) + ".jpg"
+#             img_name = '/IMG_' + str(i + 1) + ".jpg"
+            img_name = "/img_" + ("%04d" % (i + 1)) + ".jpg"
             gt_map_name = '/GT_IMG_' + str(i + 1) + ".npy"
             
             img = Image.open(self.data_root + img_name).convert("RGB")
             height = img.size[1]
             width = img.size[0]
-            resize_height = height
-            resize_width = width
+            resize_height = 768
+            resize_width = 1024
+#             resize_height = height
+#             resize_width = width
 
-            if resize_height <= 416:
-                tmp = resize_height
-                resize_height = 416
-                resize_width = (resize_height / tmp) * resize_width
+#             if resize_height <= 416:
+#                 tmp = resize_height
+#                 resize_height = 416
+#                 resize_width = (resize_height / tmp) * resize_width
 
-            if resize_width <= 416:
-                tmp = resize_width
-                resize_width = 416
-                resize_height = (resize_width / tmp) * resize_height
+#             if resize_width <= 416:
+#                 tmp = resize_width
+#                 resize_width = 416
+#                 resize_height = (resize_width / tmp) * resize_height
 
             resize_height = math.ceil(resize_height / 32) * 32
             resize_width = math.ceil(resize_width / 32) * 32

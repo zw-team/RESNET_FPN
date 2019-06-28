@@ -16,7 +16,7 @@ class TrainDatasetConstructor(data.Dataset):
                  data_dir_path,
                  gt_dir_path,
                  train_num,
-                 mode='whole',
+                 mode='crop',
                  stage='shape',
                  device=None,
                  if_random_hsi=False,
@@ -34,33 +34,40 @@ class TrainDatasetConstructor(data.Dataset):
         self.device = device
         self.kernel = torch.FloatTensor(torch.ones(1, 1, 2, 2)).to(self.device)
         for i in range(self.train_num):
-            img_name = '/IMG_' + str(i + 1) + ".jpg"
+#             img_name = '/IMG_' + str(i + 1) + ".jpg"
+            img_name = "/img_" + ("%04d" % (i + 1)) + ".jpg"
             gt_map_name = '/GT_IMG_' + str(i + 1) + ".npy"
-            img = Image.open(self.data_root + img_name).convert("RGB")
-            height = img.size[1]
-            width = img.size[0]
-            resize_height = height
-            resize_width = width
+#             img = Image.open(self.data_root + img_name).convert("RGB")
+#             height = img.size[1]
+#             width = img.size[0]
+#             resize_height = height
+#             resize_width = width
 
-            if resize_height <= 416:
-                tmp = resize_height
-                resize_height = 416
-                resize_width = (resize_height / tmp) * resize_width
+#             if resize_height <= 416:
+#                 tmp = resize_height
+#                 resize_height = 416
+#                 resize_width = (resize_height / tmp) * resize_width
 
-            if resize_width <= 416:
-                tmp = resize_width
-                resize_width = 416
-                resize_height = (resize_width / tmp) * resize_height
+#             if resize_width <= 416:
+#                 tmp = resize_width
+#                 resize_width = 416
+#                 resize_height = (resize_width / tmp) * resize_height
 
-            resize_height = math.ceil(resize_height / 32) * 32
-            resize_width = math.ceil(resize_width / 32) * 32
-            img = transforms.Resize([resize_height, resize_width])(img)
-            gt_map = Image.fromarray(np.squeeze(np.load(self.gt_root + gt_map_name)))
-            self.imgs.append([img, gt_map, i+1])
-
+#             resize_height = math.ceil(resize_height / 32) * 32
+#             resize_width = math.ceil(resize_width / 32) * 32
+#             img = transforms.Resize([resize_height, resize_width])(img)
+#             gt_map = Image.fromarray(np.squeeze(np.load(self.gt_root + gt_map_name)))
+            self.imgs.append([self.data_root + img_name, self.gt_root + gt_map_name, i + 1])
+    
     def __getitem__(self, index):
         if self.mode == 'crop':
-            img, gt_map, map_index = self.imgs[self.permulation[index]]
+            img_path, gt_map_path, map_index = self.imgs[self.permulation[index]]
+            img = Image.open(img_path).convert("RGB")
+            resize_height = 768
+            resize_width = 1024
+            img = transforms.Resize([resize_height, resize_width])(img)
+            
+            gt_map = Image.fromarray(np.squeeze(np.load(gt_map_path)))
             if self.if_random_hsi:
                 img = transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2)(img)
             if self.if_flip:

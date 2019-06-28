@@ -19,7 +19,6 @@ def eval_model(config, eval_loader, modules, if_show_sample=False):
     time_cost = 0
     rand_number = random.randint(0, config['eval_num'] - 1)
     counter = 0
-
     for eval_img_index, eval_img, eval_gt in eval_loader:
         start = time.time()
         eval_patchs = torch.squeeze(eval_img)
@@ -63,11 +62,13 @@ def eval_model(config, eval_loader, modules, if_show_sample=False):
         end = time.time()
         time_cost += (end - start)
 
-        gt_path = config['gt_path_t'] + "/GT_IMG_" + str(
-            eval_img_index.cpu().numpy()[0]) + ".mat"
         loss = criterion(prediction_map, eval_gt)
         loss_.append(loss.data.item())
-        gt_counts = len(scio.loadmat(gt_path)['image_info'][0][0][0][0][0])
+#         gt_path = config['gt_path_t'] + "/GT_IMG_" + str(
+#             eval_img_index.cpu().numpy()[0]) + ".mat"
+#         gt_counts = len(scio.loadmat(gt_path)['image_info'][0][0][0][0][0])
+        gt_path = config['gt_path_t'] + "/img_" + ("%04d" % (eval_img_index.cpu().numpy()[0])) + "_ann.mat"
+        gt_counts = len(scio.loadmat(gt_path)['annPoints'])
         batch_ae = ae_batch(prediction_map, gt_counts).data.cpu().numpy()
         batch_se = se_batch(prediction_map, gt_counts).data.cpu().numpy()
 
@@ -76,12 +77,8 @@ def eval_model(config, eval_loader, modules, if_show_sample=False):
         validate_gt_map = np.squeeze(
             eval_gt.permute(0, 2, 3, 1).data.cpu().numpy())
         pred_counts = np.sum(validate_pred_map)
-        # random show 1 sample
-#         rate = abs(gt_counts - pred_counts) / gt_counts
         if rand_number == counter and if_show_sample:
-#         if rate > 0.2:
-            origin_image = Image.open(config['img_path_t'] + "/IMG_" +
-                                      str(eval_img_index.numpy()[0]) + ".jpg")
+            origin_image = Image.open(config['img_path_t'] + "/img_" + ("%04d" % (eval_img_index.cpu().numpy()[0])) + ".jpg")
             show(origin_image, validate_gt_map, validate_pred_map,
                  eval_img_index.numpy()[0])
             sys.stdout.write(
