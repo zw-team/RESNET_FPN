@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 from net.BasicConv2d import BasicConv2d
-from net.Bottleneck import Bottleneck
 from torchvision import models
 
 class Encoder(nn.Module):
