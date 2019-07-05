@@ -8,28 +8,8 @@ import time
 import torch
 import scipy.io as scio
 
-def eval_model(config, eval_loader, modules, if_show_sample=False):
-    net = modules['model'].eval()
-    ae_batch = modules['ae']
-    se_batch = modules['se']
-    criterion = modules['loss']
-    MAE_ = []
-    MSE_ = []
-    loss_ = []
-    time_cost = 0
-    rand_number = random.randint(0, config['eval_num'] - 1)
-    counter = 0
-    for eval_img_index, eval_img, eval_gt in eval_loader:
-        start = time.time()
-        eval_patchs = torch.squeeze(eval_img)
-        eval_gt_shape = eval_gt.shape
-        prediction_map = torch.zeros(eval_gt_shape).to(config['cuda_device'])
-        with torch.no_grad():
-            eval_prediction = net(eval_patchs)
-            eval_patchs_shape = eval_prediction.shape
-            torch.cuda.empty_cache()
-        # print(eval_patchs_shape, eval_gt_shape)
-        for i in range(3):
+def test_crops():
+    for i in range(3):
             for j in range(3):
                 start_h = math.floor(eval_patchs_shape[2] / 4)
                 start_w = math.floor(eval_patchs_shape[3] / 4)
@@ -58,16 +38,39 @@ def eval_model(config, eval_loader, modules, if_show_sample=False):
                                    1, :, start_h:start_h +
                                    valid_h, start_w:start_w + valid_w]
 
+def eval_model(config, eval_loader, modules, if_show_sample=False):
+    net = modules['model'].eval()
+    ae_batch = modules['ae']
+    se_batch = modules['se']
+    criterion = modules['loss']
+    MAE_ = []
+    MSE_ = []
+    loss_ = []
+    time_cost = 0
+    rand_number = random.randint(0, config['eval_num'] - 1)
+    counter = 0
+    for eval_img_index, eval_img, eval_gt, eval_pers in eval_loader:
+        start = time.time()
+        eval_patchs = torch.squeeze(eval_img)
+        eval_gt_shape = eval_gt.shape
+        prediction_map = torch.zeros(eval_gt_shape).to(config['cuda_device'])
+        with torch.no_grad():
+            eval_prediction = net(eval_patchs) if not eval_pers == None else net(eval_patchs, eval_pers)
+            eval_patchs_shape = eval_prediction.shape
+            torch.cuda.empty_cache()
+        # test cropped patches
+        
+
         torch.cuda.synchronize()
         end = time.time()
         time_cost += (end - start)
 
         loss = criterion(prediction_map, eval_gt)
         loss_.append(loss.data.item())
-#         gt_path = config['gt_path_t'] + "/GT_IMG_" + str(
-#             eval_img_index.cpu().numpy()[0]) + ".mat"
-#         gt_counts = len(scio.loadmat(gt_path)['image_info'][0][0][0][0][0])
-        gt_path = config['gt_path_t'] + "/img_" + ("%04d" % (eval_img_index.cpu().numpy()[0])) + "_ann.mat"
+        if config['dataset_name'] == "QNRF":
+            gt_path = config['gt_path_t'] + "/img_" + ("%04d" % (eval_img_index.cpu().numpy()[0])) + "_ann.mat"
+        elif config['dataset_name'] == "SHA" or config['dataset_name'] == "SHB":
+            gt_path = config['gt_path_t'] + "/GT_IMG_" + str(eval_img_index.cpu().numpy()[0]) + ".mat"
         gt_counts = len(scio.loadmat(gt_path)['annPoints'])
         batch_ae = ae_batch(prediction_map, gt_counts).data.cpu().numpy()
         batch_se = se_batch(prediction_map, gt_counts).data.cpu().numpy()
