@@ -12,7 +12,7 @@ class FPN(nn.Module):
         self.encoder = Encoder(pretrain=pretrain)
         self.decoder = Decoder(IF_BN=True, **kwargs)
 
-    def forward(self, x):
+    def forward(self, x, pers):
         B5_C3, B4_C3, B3_C3, B2_C2 = self.encoder(x)
         output = self.decoder(B5_C3, B4_C3, B3_C3, B2_C2)
         return output

@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as functional
-from net.BasicConv2d import BasicConv2d
-from net.Bottleneck import Bottleneck
 from torchvision import models
 
 class Encoder(nn.Module):
@@ -11,10 +9,16 @@ class Encoder(nn.Module):
         self.conv1 = nn.Sequential(*list(models.resnet50(pretrained=pretrain).children())[0:3])
         self.conv2 = nn.Sequential(*list(models.resnet50(pretrained=pretrain).children())[4])
         self.ds_2 = nn.Conv2d(256, 32, 1, 1, 0)
+        nn.init.normal_(self.ds_2.weight, std=0.01)
+        nn.init.constant_(self.ds_2.bias, 0)
         self.conv3 = nn.Sequential(*list(models.resnet50(pretrained=pretrain).children())[5])
         self.ds_3 = nn.Conv2d(512, 256, 1, 1, 0)
+        nn.init.normal_(self.ds_3.weight, std=0.01)
+        nn.init.constant_(self.ds_3.bias, 0)
         self.conv4 = nn.Sequential(*list(models.resnet50(pretrained=pretrain).children())[6])
         self.ds_4 = nn.Conv2d(1024, 512, 1, 1, 0)
+        nn.init.normal_(self.ds_4.weight, std=0.01)
+        nn.init.constant_(self.ds_4.bias, 0)
         self.conv5 = nn.Sequential(*list(models.resnet50(pretrained=pretrain).children())[7])
         
     def forward(self, x):
