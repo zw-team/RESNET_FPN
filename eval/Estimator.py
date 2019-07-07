@@ -23,7 +23,7 @@ class Estimator(object):
         rand_number, cur, time_cost = random.randint(0, self.setting.eval_num - 1), 0, 0
         for eval_img_index, eval_img, eval_gt, eval_pers in self.eval_loader:
             start = time.time()
-            eval_patchs = torch.squeeze(eval_img)
+            eval_patchs, eval_pers = torch.squeeze(eval_img), torch.squeeze(eval_pers, dim=0)
             eval_gt_shape = eval_gt.shape
             prediction_map = torch.zeros(eval_gt_shape).to(self.setting.cuda_device)
             img_index = eval_img_index.cpu().numpy()[0]

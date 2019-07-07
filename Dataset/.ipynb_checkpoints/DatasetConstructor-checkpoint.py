@@ -161,26 +161,29 @@ class EvalDatasetConstructor(DatasetConstructor):
             img = transforms.ToTensor()(img).to(self.device)
             gt_map = Image.fromarray(np.squeeze(np.load(gt_map_path)))
             gt_map = transforms.ToTensor()(gt_map).to(self.device)
-            img_shape = img.shape  # C, H, W
-            gt_shape = gt_map.shape
-            img = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))(img)
-            patch_height = (img_shape[1]) // 2
-            patch_width = (img_shape[2]) // 2
-            imgs = []
-            for i in range(3):
-                for j in range(3):
-                    start_h = (patch_height // 2) * i
-                    start_w = (patch_width // 2) * j
-                    imgs.append(img[:, start_h:start_h + patch_height, start_w:start_w + patch_width])
-            imgs = torch.stack(imgs)
-            gt_map = functional.conv2d(gt_map.view(1, *(gt_shape)), self.kernel, bias=None, stride=2, padding=0)
             p_m = None
             if not(self.pers_root == None):
-                p_m = Image.fromarray((scio.loadmat(pers_path)['pmap'][:] / 100))
-#                 p_m = Image.fromarray((h5py.File(pers_path)['pmap'][:] / 100).T)
+                if self.dataset_name == "SHA":
+                    p_m = Image.fromarray((scio.loadmat(pers_path)['pmap'][:] / 100))
+                elif self.dataset_name == "SHB":
+                    p_m = Image.fromarray((h5py.File(pers_path)['pmap'][:] / 100).T)
+                else:
+                    raise NameError("No such perspective map, only support SHA, SHB")
                 p_m = super(EvalDatasetConstructor, self).resize(p_m, self.dataset_name)
                 p_m = transforms.ToTensor()(p_m).to(self.device)
-            return img_index, imgs, gt_map.view(1, gt_shape[1] // 2, gt_shape[2] // 2), p_m
+            img_shape, gt_shape = img.shape, gt_map.shape  # C, H, W
+            img = transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))(img)
+            patch_height, patch_width = (img_shape[1]) // 2, (img_shape[2]) // 2
+            imgs, pers = [], []
+            for i in range(3):
+                for j in range(3):
+                    start_h, start_w = (patch_height // 2) * i, (patch_width // 2) * j
+                    imgs.append(img[:, start_h:start_h + patch_height, start_w:start_w + patch_width])
+                    if not(self.pers_root == None):
+                        pers.append(p_m[:, start_h:start_h + patch_height, start_w:start_w + patch_width])
+            imgs, pers = torch.stack(imgs), torch.stack(pers)
+            gt_map = functional.conv2d(gt_map.view(1, *(gt_shape)), self.kernel, bias=None, stride=2, padding=0)
+            return img_index, imgs, gt_map.view(1, gt_shape[1] // 2, gt_shape[2] // 2), pers
 
     def __len__(self):
         return self.validate_num

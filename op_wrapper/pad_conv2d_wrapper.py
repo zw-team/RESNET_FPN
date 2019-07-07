@@ -51,10 +51,6 @@ class BasicPerspectiveDilatedConv2D(Module):
         super(BasicPerspectiveDilatedConv2D, self).__init__()
         self.rate_map_generator = AdaptiveSigmoid(**kwargs)
 #         self.rate_map_generator.params.register_hook(lambda x:print('Conv', x))
-#         self.rate_map_generator = nn.Conv2d(in_channels, 1, kernel_size=3, stride=1, padding=1, dilation=1) 只能到 70
-#         nn.init.zeros_(self.rate_map_generator.weight)
-#         nn.init.constant_(self.rate_map_generator.bias, 2.)
-        
         self.stride = 1
         self.pad = (kernel_size // 2)
         self.perspective_dilated_conv2d = PerspectiveDilatedConv2dLayer(in_channels, out_channels, kernel_size, self.stride, self.stride)

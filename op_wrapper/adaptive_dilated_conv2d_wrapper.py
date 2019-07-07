@@ -4,7 +4,6 @@ from torch.autograd import Function
 from torch.nn import Module
 import adaptive_dilated_conv2d_gpu as adaptive_dilated_conv2d
 
-
 class AdaptiveDilatedConv2dFunction(Function):
     @staticmethod
     def forward(ctx, *args):
@@ -49,7 +48,6 @@ class AdaptiveDilatedConv2dLayer(Module):
         w_out = (w_in - (1 * (self.kernel_size - 1) + 1)) // self.stride_w + 1
         rate_map = nn.functional.interpolate(self.rates, size=[h_out, w_out], mode='nearest')
         return AdaptiveDilatedConv2dFunction.apply(inputs, self.weight, rate_map, self.bias, self.stride_h, self.stride_w)
-
     
 class BasicAdaptiveDilatedConv2D(Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, scale=100, dilation=1):
