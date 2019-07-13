@@ -16,3 +16,9 @@ class FPN(nn.Module):
         B5_C3, B4_C3, B3_C3, B2_C2 = self.encoder(x)
         output = self.decoder(B5_C3, B4_C3, B3_C3, B2_C2)
         return output
+    
+    def getEncoder(self):
+        return self.encoder
+    
+    def getDecoder(self):
+        return self.decoder

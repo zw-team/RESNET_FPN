@@ -1,5 +1,5 @@
 class config(object):
-    def __init__(self, cuda_device, model_save_name, dataset_name="SHA", lr=1e-4, batch_size=5, eval_per_step=30):
+    def __init__(self, cuda_device, model_save_name="", dataset_name="SHA", lr=1e-4, batch_size=5, eval_per_step=30):
         self.min_mae = 10240000
         self.min_loss = 10240000
         self.dataset_name = dataset_name
