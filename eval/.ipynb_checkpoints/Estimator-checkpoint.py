@@ -23,15 +23,17 @@ class Estimator(object):
         rand_number, cur, time_cost = random.randint(0, self.setting.eval_num - 1), 0, 0
         for eval_img_index, eval_img, eval_gt, eval_pers in self.eval_loader:
             start = time.time()
-            eval_patchs, eval_pers = torch.squeeze(eval_img), torch.squeeze(eval_pers, dim=0)
-            eval_gt_shape = eval_gt.shape
-            prediction_map = torch.zeros(eval_gt_shape).to(self.setting.cuda_device)
             img_index = eval_img_index.cpu().numpy()[0]
             with torch.no_grad():
-                eval_prediction = net(eval_patchs, eval_pers)
-                eval_patchs_shape = eval_prediction.shape
                 # test cropped patches
-                self.test_crops(eval_patchs_shape, eval_prediction, prediction_map)
+                if self.setting.mode == 'crop': 
+                    eval_patchs, eval_pers = torch.squeeze(eval_img), torch.squeeze(eval_pers, dim=0)
+                    eval_prediction = net(eval_patchs, eval_pers)
+                    prediction_map = torch.zeros(eval_gt.shape).to(self.setting.cuda_device)
+                    self.test_crops(eval_prediction.shape, eval_prediction, prediction_map)
+                # test whole images
+                elif self.setting.mode == 'whole': 
+                    prediction_map = net(eval_img, eval_pers)
                 gt_counts = self.get_gt_num(img_index)
                 # calculate metrics
                 batch_ae = self.ae_batch(prediction_map, gt_counts).data.cpu().numpy()

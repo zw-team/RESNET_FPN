@@ -32,3 +32,5 @@ class BasicPersConv2d(nn.Module):
         if not(self.activation == None):
             x = self.activation(x)
         return x
+    
+    
