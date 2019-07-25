@@ -1,5 +1,5 @@
 class config(object):
-    def __init__(self, cuda_device, model_save_name="", dataset_name="SHA", lr=1e-4, batch_size=5, eval_per_step=30):
+    def __init__(self, cuda_device, mode = "crop", model_save_name="", dataset_name="SHA", lr=1e-4, batch_size=5, eval_per_step=30):
         self.min_mae = 10240000
         self.min_loss = 10240000
         self.dataset_name = dataset_name
@@ -44,7 +44,7 @@ class config(object):
         self.train_batch_size = batch_size
         self.epoch = 20000
         self.eval_per_step = eval_per_step
-        self.mode = 'crop'
+        self.mode = mode
         self.if_random_hsi =True
         self.if_flip = True
 #         self.model_save_path = "/data/wangyezhen/checkpoints/RESNET_FPN/RESFPN_ADAMDILATION_A_7_6.pkl"
