@@ -162,6 +162,7 @@ class EvalDatasetConstructor(DatasetConstructor):
         self.pers_root = pers_dir_path
         self.mode = mode
         self.device = device
+        self.dataset_name = dataset_name
         if self.device == None:
             raise Exception("Only support GPU version! Please choose the specific GPU device.")
         self.dataset_name = dataset_name
@@ -197,7 +198,7 @@ class EvalDatasetConstructor(DatasetConstructor):
         elif self.mode == 'whole':
             img_path, gt_map_path, pers_path, img_index = self.imgs[index]
             img = Image.open(img_path).convert("RGB")
-            p_m = np.zeros(img.size[::-1], dtype=float) if self.pers_root == "" else scio.loadmat(pers_path)['pmap'][:] / 100
+            p_m = np.zeros(img.size[::-1], dtype=float) if self.pers_root == "" else (scio.loadmat(pers_path)['pmap'][:] / 100)
             p_m = super(EvalDatasetConstructor, self).resize(Image.fromarray(p_m), self.dataset_name)
             img = super(EvalDatasetConstructor, self).resize(img, self.dataset_name)
             img = transforms.ToTensor()(img).to(self.device)

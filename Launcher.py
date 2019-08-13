@@ -3,17 +3,18 @@ import sys
 import numpy as np
 import torch
 assert torch.cuda.is_available()
-f = open("/home/zzn/PycharmProjects/RESNET_FPN/Logs/RES_50_PERS_FPN_A_7_7.txt", "w")
+f = open("/home/zzn/PycharmProjects/RESNET_FPN/Logs/PGCThetaNet_A_8_5.txt", "w")
 cuda_device = torch.device("cuda:0")
 torch.cuda.set_device(cuda_device)
 from config import config
 setting = config(
     cuda_device, 
-    model_save_name="/home/zzn/PycharmProjects/RESNET_FPN/StateDicts/RES_50_PERS_FPN_A_7_7.pkl", 
+    mode = "whole",
+    model_save_name="/home/zzn/PycharmProjects/RESNET_FPN/StateDicts/PGCThetaNet_A_8_5.pkl", 
     dataset_name="SHA",
-    lr=1e-4, 
-    batch_size=5, 
-    eval_per_step=120
+    lr=1e-6, 
+    batch_size=1, 
+    eval_per_step=300
 )
 # data_load
 from Dataset.DatasetConstructor import TrainDatasetConstructor,EvalDatasetConstructor
@@ -37,15 +38,28 @@ eval_dataset = EvalDatasetConstructor(
     device=setting.cuda_device)
 train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=setting.train_batch_size)
 eval_loader = torch.utils.data.DataLoader(dataset=eval_dataset, batch_size=1)
+
 # model construct
 from net.RES_PERS_FPN.PERS_FPN import PERS_FPN
 from eval.Estimator import Estimator
+from net.CSRPersNet import CSRPersNet
+from collections import OrderedDict
+from net.PGCThetaNet import PGCThetaNet
 # net = FPN().to(setting.cuda_device)
-net = PERS_FPN(sigma=[1, 1, 0, 1], updates_signal=[True, True, True, True]).to(setting.cuda_device)
-optimizer = torch.optim.Adam(net.parameters(), setting.learning_rate)
+# net = CSRPersNet(sigma=[1, 1, 1, 2], updates_signal=[True, True, True, True]).to(setting.cuda_device)
+# net = PERS_FPN(sigma=[1, 1, 0, 1], updates_signal=[True, True, True, True]).to(setting.cuda_device)
+
+net = PGCThetaNet( load_path=None,
+                    gaussian_size=7, 
+                    gs_layers=[5], 
+                    atrous=2,
+                    sigma_args=[1.5, 1.2, 0.9, 0]
+                ).cuda()
+main_params, ada_sig_params = net.get_params()
+optimizerW = torch.optim.Adam({*main_params}, setting.learning_rate)
+optimizerD = torch.optim.Adam({*ada_sig_params}, 5e-4)
 criterion = torch.nn.MSELoss(reduction='sum').to(setting.cuda_device)
 estimator = Estimator(setting, eval_loader, criterion=criterion)
-
 import time
 step = 0
 eval_loss, eval_mae, eval_rmse = [], [], []
@@ -64,22 +78,27 @@ for epoch_index in range(setting.epoch):
                 .format(step, epoch_index, validate_loss, validate_MAE,
                         validate_RMSE, time_cost))
             f.flush()
-            #             save model
+            # save model
             if setting.min_mae > validate_MAE:
                 setting.min_mae = validate_MAE
                 torch.save(net.state_dict(), setting.model_save_path)
+                
         net.train()
         torch.cuda.empty_cache()
         x, y = train_img, train_gt
-        start = time.time()
+        
         prediction = net(x, train_pers)
         loss = criterion(prediction, y)
-        optimizer.zero_grad()
+        optimizerD.zero_grad()
         loss.backward()
         loss_list.append(loss.data.item())
-        optimizer.step()
+        optimizerD.step()
+        
+        prediction = net(x, train_pers)
+        loss = criterion(prediction, y)
+        optimizerW.zero_grad()
+        loss.backward()
+        loss_list.append(loss.data.item())
+        optimizerW.step()
 
         step += 1
-        torch.cuda.empty_cache()
-        end = time.time()
-        time_per_epoch += end - start

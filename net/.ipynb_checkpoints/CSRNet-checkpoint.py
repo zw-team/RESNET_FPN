@@ -24,7 +24,7 @@ class CSRNet(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-    def forward(self, x):
+    def forward(self, x, pers):
         img_shape = x.shape
         front_end = self.front_end(x)
         back_end = self.back_end(front_end)
